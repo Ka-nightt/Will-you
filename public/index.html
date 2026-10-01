@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Will you? 💖</title>
+<link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Quicksand:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root{--rose:#e11d48;--soft:#fff1f5;--ink:#4a1030;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;font-family:'Quicksand',system-ui,sans-serif;color:var(--ink)}
+body{background:linear-gradient(160deg,#ff9a9e,#fad0c4 40%,#fbc2eb 75%,#a18cd1);background-attachment:fixed;overflow-x:hidden}
+.hearts{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:0}
+.hearts span,.fall{position:absolute;bottom:-40px;animation:rise linear infinite;opacity:.6}
+@keyframes rise{to{transform:translateY(-115vh) rotate(40deg);opacity:0}}
+main{position:relative;z-index:1;max-width:460px;margin:0 auto;padding:24px 16px;min-height:100vh;display:flex;align-items:center}
+.card{width:100%;background:rgba(255,255,255,.82);backdrop-filter:blur(8px);border-radius:28px;padding:28px 22px;text-align:center;box-shadow:0 20px 50px rgba(160,20,80,.25)}
+h1{font-family:'Pacifico',cursive;font-weight:400;font-size:2rem;margin:.2em 0 .4em;color:var(--rose);line-height:1.25}
+p{margin:.4em 0 1em}
+input,select{width:100%;padding:13px 14px;margin:6px 0;border-radius:14px;border:2px solid #f9a8c0;font:inherit;background:#fff;color:var(--ink)}
+label{display:block;text-align:left;font-weight:700;font-size:.85rem;margin-top:8px}
+button,.btn{font:inherit;font-weight:700;border:0;border-radius:999px;padding:14px 30px;font-size:1.1rem;cursor:pointer;text-decoration:none;display:inline-block;color:#fff;background:var(--rose);box-shadow:0 6px 16px rgba(225,29,72,.4)}
+button.no{background:#6b7280;box-shadow:none;transition:left .25s,top .25s}
+.row{display:flex;gap:16px;justify-content:center;align-items:center;min-height:120px;flex-wrap:wrap}
+.big{font-size:4.5rem;animation:bloom 1.2s ease-out both}
+@keyframes bloom{0%{transform:scale(0) rotate(-90deg)}70%{transform:scale(1.3) rotate(10deg)}100%{transform:scale(1)}}
+.dance{display:inline-block;font-size:3.2rem;animation:dance .6s ease-in-out infinite alternate}
+.dance:nth-child(2){animation-delay:.3s}
+@keyframes dance{from{transform:translateY(0) rotate(-14deg)}to{transform:translateY(-22px) rotate(14deg)}}
+.hide{display:none!important}
+.res{background:#fff;border-radius:14px;padding:10px 12px;margin:8px 0;text-align:left;font-size:.9rem}
+small{opacity:.75}
+</style></head>
+<body>
+<div class="hearts" id="hearts"></div>
+<main><div class="card" id="app"></div></main>
+<script>
+let ADMIN_PHONE='';
+const $=id=>document.getElementById(id), app=$('app');
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const QS={bf:'Will you be my boyfriend?',gf:'Will you be my girlfriend?',date:'Will you go on a date with me?'};
+const qText=()=>L.q==='custom'?L.custom_q:(QS[L.q]||QS.date);
+const BASE=location.href.split(/[?#]/)[0];
+const tok=()=>{try{return localStorage.getItem('wy_token')||''}catch(e){return ''}};
+const setTok=t=>{try{localStorage.setItem('wy_token',t)}catch(e){}};
+const J=(u,o)=>fetch(u,{credentials:'same-origin',headers:{'Content-Type':'application/json'},...o}).then(async r=>{const t=await r.text();if(!r.ok)throw new Error(t);return t?JSON.parse(t):null});
+const post=(u,b)=>J(u,{method:'POST',body:JSON.stringify(b)});
+const rpc=(fn,a)=>({
+  request_access:()=>post('/api/request',{name:a.n,phone:a.p}).then(r=>r.token),
+  check_access:()=>J('/api/access/'+a.t).then(r=>r.approved),
+  make_link:()=>post('/api/links',{token:a.t,q:a.q,custom:a.custom,plan:a.plan}).then(r=>r.slug),
+  get_link:()=>J('/api/links/'+a.s).then(r=>[r]),
+  send_response:()=>post('/api/responses',{slug:a.s,name:a.n,date:a.d,time:a.tm,venue:a.v,noCount:a.nc}),
+  my_responses:()=>J('/api/my-responses/'+a.t)
+}[fn])();
+const wa=(num,txt)=>`https://wa.me/${String(num).replace(/\D/g,'')}?text=${encodeURIComponent(txt)}`;
+(function(){const h=$('hearts'),e=['💗','💖','🌸','💕','🌹'];
+for(let i=0;i<16;i++){const s=document.createElement('span');s.textContent=e[i%5];s.style.left=Math.random()*100+'%';s.style.fontSize=(16+Math.random()*26)+'px';s.style.animationDuration=(7+Math.random()*9)+'s';s.style.animationDelay=(-Math.random()*12)+'s';h.appendChild(s)}})();
+const busy=m=>app.innerHTML=`<div class="big">💗</div><p>${m}</p>`;
+
+/* ---------- HOME: request access / create link ---------- */
+async function home(){
+  const t=tok();
+  if(!t){
+    app.innerHTML=`<h1>Ask them out 💌</h1><p>Want your own page to ask someone special? Request access — it's approved personally.</p>
+    <label>Your name</label><input id="n"><label>Your WhatsApp number (with country code)</label><input id="p" inputmode="numeric" placeholder="2547XXXXXXXX">
+    <p></p><button id="rq">Request access 🙏</button>
+    <p><small>Already have an access code?</small></p><input id="tc" placeholder="Paste access code"><button id="tg" style="margin-top:6px;padding:10px 22px;font-size:1rem">Use code</button>`;
+    $('rq').onclick=async()=>{const n=$('n').value.trim(),p=$('p').value.replace(/\D/g,'');
+      if(!n||p.length<9)return alert('Add your name and WhatsApp number 💕');
+      try{busy('Sending request…');setTok(await rpc('request_access',{n,p}));
+        app.innerHTML=`<div class="big">⏳</div><h1>Request sent!</h1><p>Ping the owner so they can approve you faster.</p>
+        ${ADMIN_PHONE?`<a class="btn" target="_blank" rel="noopener" href="${wa(ADMIN_PHONE,`Hi! It's ${n}. Please approve my access on the "Will you?" site 🙏`)}">Notify on WhatsApp 💬</a><p></p>`:''}
+        <button id="ck">Check status</button>`;$('ck').onclick=home}catch(e){alert('Something went wrong, try again');home()}};
+    $('tg').onclick=()=>{const v=$('tc').value.trim();if(v){setTok(v);home()}};return}
+  busy('Checking…');let ok=false;try{ok=await rpc('check_access',{t})}catch(e){}
+  if(!ok){app.innerHTML=`<div class="big">⏳</div><h1>Waiting for approval</h1><p>You'll get the go-ahead soon. Tap below to check again.</p><button id="ck">Check again</button>
+    <p><small><a href="#" id="rs">Start over</a></small></p>`;$('ck').onclick=home;$('rs').onclick=e=>{e.preventDefault();setTok('');home()};return}
+  app.innerHTML=`<h1>You're approved 🎉</h1><label>What are you asking?</label>
+  <select id="q"><option value="date">Go on a date with me</option><option value="gf">Be my girlfriend</option><option value="bf">Be my boyfriend</option><option value="custom">✏️ Write my own question…</option></select>
+  <div id="cw" class="hide"><label>Your question</label><input id="cq" maxlength="200" placeholder="e.g. Will you marry me? 💍"><label style="display:flex;gap:8px;align-items:center;font-weight:500"><input type="checkbox" id="pl" checked style="width:auto;margin:0"> Ask for a date, time &amp; venue after they say yes</label></div>
+  <p></p><button id="mk">Create my link ✨</button>
+  <div id="out" class="hide"><p><b>Send this to your crush:</b></p><input id="lk" readonly><button id="cp" style="margin-top:8px">Copy link</button></div>
+  <h1 style="font-size:1.5rem;margin-top:24px">Your answers 💗</h1><div id="list"><small>Loading…</small></div>
+  <p><small>Your private access code (for other devices):<br><b>${esc(t)}</b></small></p>`;
+  $('q').onchange=()=>$('cw').classList.toggle('hide',$('q').value!=='custom');
+  $('mk').onclick=async()=>{const q=$('q').value,custom=$('cq').value.trim();if(q==='custom'&&!custom)return alert('Type your question 💕');try{const s=await rpc('make_link',{t,q,custom,plan:$('pl').checked});$('lk').value=BASE+'#l='+s;$('out').classList.remove('hide')}catch(e){alert('Could not create link')}};
+  $('cp').onclick=async()=>{try{await navigator.clipboard.writeText($('lk').value);$('cp').textContent='Copied ✅'}catch(e){$('lk').select()}};
+  try{const d=await rpc('my_responses',{t});$('list').innerHTML=d.length?d.map(r=>`<div class="res"><b>${esc(r.name)}</b> said YES 💖<br>${r.date_pick?`📅 ${esc(r.date_pick)} ⏰ ${esc(r.time_pick)}<br>📍 ${esc(r.venue)}<br>`:''}<small>Tapped No ${+r.no_count||0} times 😂</small></div>`).join(''):'<small>No answers yet…</small>'}catch(e){$('list').textContent=''}
+}
+
+/* ---------- ADMIN (#admin) ---------- */
+function admin(){
+  app.innerHTML=`<h1>Admin 🔐</h1><input id="pw" type="password" placeholder="Admin password"><p></p><button id="li">Log in</button>`;
+  const go=async()=>{try{await post('/api/admin/login',{password:$('pw').value});panel()}catch(e){alert('Wrong password')}};
+  $('li').onclick=go;$('pw').onkeydown=e=>{if(e.key==='Enter')go()};
+  J('/api/admin/requests').then(panel).catch(()=>{});
+}
+async function panel(){
+  const [rq,rs]=await Promise.all([J('/api/admin/requests'),J('/api/admin/responses')]);
+  app.innerHTML=`<h1 style="font-size:1.6rem">Requests</h1>`+(rq.map(r=>`<div class="res"><b>${esc(r.name)}</b> · ${esc(r.phone)}<br>${r.approved?'✅ approved':'⏳ pending'}<br>
+    <button data-id="${r.id}" data-ok="${!r.approved}" style="padding:8px 18px;font-size:.9rem;margin-top:6px">${r.approved?'Revoke':'Approve'}</button></div>`).join('')||'<small>None yet</small>')+
+   `<h1 style="font-size:1.6rem;margin-top:20px">All answers</h1>`+(rs.map(r=>`<div class="res"><b>${esc(r.name)}</b> → ${esc(r.from_name)}<br>📅 ${esc(r.date_pick)} ⏰ ${esc(r.time_pick)} · 📍 ${esc(r.venue)}</div>`).join('')||'<small>None yet</small>');
+  app.querySelectorAll('button[data-id]').forEach(b=>b.onclick=async()=>{await post('/api/admin/requests/'+b.dataset.id,{approved:b.dataset.ok==='true'});panel()});
+}
+
+/* ---------- CRUSH: the ask ---------- */
+let name='',noCount=0,L=null,slug='';
+async function crush(s){
+  busy('Opening your surprise…');slug=s;
+  try{const d=await rpc('get_link',{s});L=d&&d[0]}catch(e){}
+  if(!L)return app.innerHTML=`<div class="big">🥀</div><h1>Link not found</h1><p>Ask the sender for a fresh link.</p>`;
+  app.innerHTML=`<div class="big">💌</div><h1>Someone special has a question for you…</h1><p>First, what's your name?</p><input id="nm" placeholder="Your name" autocomplete="given-name"><p></p><button id="go">Continue 💕</button>`;
+  $('go').onclick=()=>{name=$('nm').value.trim();if(!name)return $('nm').focus();ask()};
+}
+const msgs=['Are you sure? 🥺','Think again 💭','Pretty please? 🌹','Don\u2019t break my heart 💔','Last chance… 😢','The No button is shy 😜','You know you want to! 😏'];
+function ask(){
+  app.innerHTML=`<div class="big">🌹</div><h1>${esc(name)}, ${esc(qText())}</h1><p id="hint"><b>${esc(L.from_name)}</b> is waiting… 💗</p>
+  <div class="row"><button id="yes">Yes 💖</button><button class="no" id="no">No</button></div>`;
+  const no=$('no'),yes=$('yes');
+  const dodge=e=>{e.preventDefault();noCount++;no.style.position='fixed';no.style.zIndex=5;
+    const w=innerWidth-no.offsetWidth-16,h=innerHeight-no.offsetHeight-16;
+    no.style.left=Math.max(8,Math.random()*w)+'px';no.style.top=Math.max(8,Math.random()*h)+'px';
+    $('hint').textContent=msgs[(noCount-1)%msgs.length];yes.style.transform=`scale(${Math.min(1+noCount*.12,2)})`;yes.style.margin=`0 ${Math.min(noCount*4,24)}px`};
+  no.addEventListener('click',dodge);no.addEventListener('touchstart',dodge,{passive:false});
+  no.addEventListener('mouseenter',()=>{if(noCount>=2)dodge(new Event('x'))});yes.onclick=celebrate;
+}
+function rain(){const em=['🌹','💖','🌸','💕','✨','🥰'];
+  for(let i=0;i<50;i++){const s=document.createElement('span');s.className='fall';s.textContent=em[i%6];
+    s.style.left=Math.random()*100+'%';s.style.fontSize=(20+Math.random()*30)+'px';s.style.opacity=1;s.style.zIndex=9;
+    s.style.animationDuration=(3+Math.random()*4)+'s';s.style.animationDelay=Math.random()*2+'s';document.body.appendChild(s);setTimeout(()=>s.remove(),9000)}}
+function celebrate(){
+  rain();if(L.plan===0)return finish('','','');const today=new Date().toISOString().slice(0,10);
+  app.innerHTML=`<div class="big">🌹</div><div><span class="dance">💃</span><span class="dance">🕺</span></div>
+  <h1>Yaaay, ${esc(name)}! 🎉</h1><p>${esc(L.from_name)} is smiling ear to ear right now. Let's plan it 💕</p>
+  <label>Pick a date</label><input type="date" id="d" min="${today}"><label>Pick a time</label><input type="time" id="tm" value="18:00">
+  <label>Venue</label><select id="vs"><option>Cosy restaurant 🍝</option><option>Coffee shop ☕</option><option>Picnic in the park 🧺</option><option>Movie night 🎬</option><option>Sunset walk 🌅</option><option value="other">Somewhere else…</option></select>
+  <input id="vo" class="hide" placeholder="Type your dream venue"><p></p><button id="sub">Send it 💌</button>`;
+  $('vs').onchange=()=>$('vo').classList.toggle('hide',$('vs').value!=='other');$('sub').onclick=submit;
+}
+async function submit(){
+  const date=$('d').value,time=$('tm').value;if(!date||!time)return alert('Choose a date and time 💕');
+  const venue=$('vs').value==='other'?($('vo').value.trim()||'Surprise me'):$('vs').value;
+  return finish(date,time,venue);
+}
+async function finish(date,time,venue){
+  let saved=false;try{await rpc('send_response',{s:slug,n:name,d:date,tm:time,v:venue,nc:noCount});saved=true}catch(e){}
+  const txt=`${name} said YES 💖 (${qText()})`+(date?`\n📅 ${date} ⏰ ${time}\n📍 ${venue}`:'')+`\n(I tapped No ${noCount} times 😂)`;
+  app.innerHTML=`<div class="big">💞</div><h1>${date?"It's a date! 🥂":'You said yes! 🥰'}</h1>${date?`<p>${esc(date)} · ${esc(time)}<br>${esc(venue)}</p>`:''}
+  <p>${saved?`${esc(L.from_name)} has been told 💗`:`Let ${esc(L.from_name)} know 👇`}</p>
+  <a class="btn" target="_blank" rel="noopener" href="${wa(L.phone,txt)}">Also say it on WhatsApp 💬</a>`;rain();
+}
+
+/* ---------- ROUTER ---------- */
+function route(){
+  const h=location.hash.replace(/^#/,''),P=new URLSearchParams(h),Q=new URLSearchParams(location.search);
+  const sl=P.get('l')||Q.get('l');
+  if(sl)crush(sl);else if(h==='admin')admin();else home();
+}
+addEventListener('hashchange',()=>location.reload());
+fetch('/api/config').then(r=>r.json()).then(c=>{ADMIN_PHONE=c.adminPhone||''}).catch(()=>{}).finally(route);
+</script></body></html>
